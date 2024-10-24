@@ -1,8 +1,9 @@
 import csv
-import time
 from collections import defaultdict
 from itertools import combinations
+from flask import Flask, request, jsonify
 
+app = Flask(__name__)
 
 def find_frequent_1_itemsets(D, min_sup):
     """Find frequent 1-itemsets."""
@@ -84,19 +85,30 @@ def apriori(D, min_sup):
     return set().union(*L), support_data
 
 
-def read_transactions(file_name):
-    """Read transactions from the input CSV file."""
-    transactions = []
-    with open(file_name, 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            transactions.append([item.strip() for item in row])  # Strip spaces
-    return transactions
-
-
 def format_final_output(itemsets):
     """Format the frequent itemsets for final output without frozenset."""
     formatted_itemsets = []
     for itemset in itemsets:
         formatted_itemsets.append("{" + ",".join(map(str, sorted(itemset))) + "}")
     return "{{" + "".join(formatted_itemsets) + "}}"
+
+
+@app.route('/apriori', methods=['POST'])
+def apriori_endpoint():
+    data = request.get_json()
+    transactions = data.get('transactions')
+    min_sup = data.get('min_sup')
+
+    if not transactions or min_sup is None:
+        return jsonify({"error": "Invalid input"}), 400
+
+    frequent_itemsets, support_data = apriori(transactions, min_sup)
+
+    return jsonify({
+        "frequent_itemsets": format_final_output(frequent_itemsets),
+        "support_data": support_data
+    })
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
